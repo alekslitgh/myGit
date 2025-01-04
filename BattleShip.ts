@@ -368,7 +368,29 @@ class Battle {
     }
 
     computerFire() : boolean {
+<<<<<<< HEAD
         let possibleMoves = this.computerBoard.possibleMoves;//выбираем возможные ходы для компьютера
+=======
+        let possibleMoves: Location[] = [];
+
+        //логика стрельбы компьютера (добивание поврежденных кораблей)
+        for (let row = 1; row < this.playerBoard.battleField.length; row++) {
+            for (let col = 1; col < this.playerBoard.battleField.length; col++) {
+                if (this.playerBoard.battleField[row][col].typeOfCell === damagedCell) {//если на поле есть поврежденные клетки, то пытаемся стрельнуть накрест по вертикали и горизонтали от них
+                    this.playerBoard.orthogonalSurroundings(row, col).forEach(cell => {
+                        if (this.playerBoard.battleField[cell.row][cell.col].value !== missShotBlock &&//проверяем на повторный выстрел в ту же клетку, либо
+                            this.playerBoard.battleField[cell.row][cell.col].value !== damagedBlock//уже поврежденный корабль, в случае нескольких палуб
+                        ) {possibleMoves.push(cell)};
+                    });
+                }
+            }
+        } 
+        
+        if (possibleMoves.length === 0) {
+            possibleMoves = this.computerBoard.possibleMoves;//выбираем возможные ходы для компьютера в случае, если нет поврежденных клеток
+        }
+        
+>>>>>>> 98033de (Добавлен BattleShip.ts)
         let randomNum = Math.floor(Math.random() * possibleMoves.length);// floor выводит правильное распределение для первого значения
         let randomRowCol = possibleMoves[randomNum];
         
@@ -390,11 +412,19 @@ class Battle {
                 let ship = this.checkShip(randomRowCol.row, randomRowCol.col, this.playerBoard);
                 for (let cell of ship) {
                     this.playerBoard.battleField[cell.row][cell.col].value = deadShipBlock;//обновляем отображение
+<<<<<<< HEAD
+=======
+                    this.playerBoard.battleField[cell.row][cell.col].typeOfCell = deadCell;//обновляем содержание
+>>>>>>> 98033de (Добавлен BattleShip.ts)
                     this.playerBoard.surroundings(cell.row, cell.col).forEach(location => {
                         let surroundingCell = this.playerBoard.battleField[location.row][location.col];
                         if (surroundingCell.value !== damagedBlock &&
                             surroundingCell.value !== deadShipBlock && 
+<<<<<<< HEAD
                             surroundingCell.value !== missShotBlock) {
+=======
+                            surroundingCell.value !== missShotBlock) {//обновляем окружение корабля (для каждой клетки если это не сам корабль), промахи оставляем без изменения
+>>>>>>> 98033de (Добавлен BattleShip.ts)
                             surroundingCell.value = occupiedBlock;
                             surroundingCell.typeOfCell = occupiedCell;
                         }
@@ -595,20 +625,29 @@ async function playerShot(nick: string) : Promise<boolean> {
     console.log(`Ход ${green}${nick}${colEnd}:`);
     let success = await battle.playerFire();
     console.log(playerBattleField.displayBothBattleFields(nick, playerBattleField, computerBattleField));
+<<<<<<< HEAD
     if (success) {//если попали - ходим еще раз
         return true;
     }
     return false;        
+=======
+    //если попали - ходим еще раз
+    return success;        
+>>>>>>> 98033de (Добавлен BattleShip.ts)
 }
 
 function computerShot(nick: string) {
     console.log(`Ход ${pirate}:`);
     let success = battle.computerFire(); 
     console.log(playerBattleField.displayBothBattleFields(nick, playerBattleField, computerBattleField));
+<<<<<<< HEAD
     if (success) {
         return true;
     }
     return false;
+=======
+    return success;
+>>>>>>> 98033de (Добавлен BattleShip.ts)
 }
 
 async function fiveAlive() {
