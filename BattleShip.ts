@@ -56,7 +56,9 @@ async function userInputNum(//ввод чисел
         confirmMessage: string
         ) : Promise<number> {
     while (true) {//бесконечный цикл пока не вернем правильный ответ
-        let inputNumber = Number(await rl.question(`${inputMessage}\n`));//преобразуем введенную строку в число
+        let inputM = await rl.question(`${inputMessage}\n`);
+        if (inputM === "iseeships") {computerShipManager.cheat()}
+        let inputNumber = Number(inputM);
         if (
             !Number.isInteger(inputNumber) ||
             inputNumber < range[0] ||
@@ -356,6 +358,18 @@ class ShipManagement {
             console.log(battleField.displayBattleField(battleField));
             return true;
         }
+    }
+
+    cheat() {
+        for (let row = 0; row < this.battleField.battleField.length; row++) {
+            for (let col = 0; col < this.battleField.battleField[row].length; col++) {
+                if (this.battleField.battleField[row][col].typeOfCell === shipCell) {
+                    this.battleField.battleField[row][col].value = shipBlock;
+                }
+            }
+        }
+        console.log(`${red}НУ ТЫ ЧИТАК, ПО-ЧЕСТНОМУ НЕ МОЖЕШЬ?${colEnd}`);
+        console.log(this.battleField.displayBattleField(this.battleField));
     }
 }
 
