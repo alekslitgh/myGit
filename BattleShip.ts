@@ -501,7 +501,6 @@ class Battle {
             board.battleField[row][col].typeOfCell = damagedCell;
             let dead = this.isDead(row,col, this.computerBoard);
             if (dead) {//если корабль мертв
-                console.log("УБИЛ!!!")
                 let ship = this.checkShip(row,col, this.computerBoard);//собираем его почастям
                 for (let cell of ship) {
                     board.battleField[cell.row][cell.col].value = deadShipBlock;//корабль погиб, обновляем его отображение
@@ -515,12 +514,13 @@ class Battle {
                         }
                     });
                 }
+                console.log(`${red}УБИЛ!!!${colEnd}`)
             } else {
-                console.log("РАНИЛ!!!")
+                console.log(`${red}РАНИЛ!!!${colEnd}`)
             }
             return true;
         } else {
-            console.log("ПРОМАХ!!!");//todo
+            console.log(`${yellow}ПРОМАХ!!!${red}`);
             board.battleField[row][col].value = missShotBlock;
             board.battleField[row][col].typeOfCell = occupiedCell;
         }
@@ -709,7 +709,7 @@ async function startGame() {
     let first = await firstMove(nick);    
     await blinkingMessage(gameStart, 4, 1000);
 
-    let fiveAliveMessage = false, oneAliveMessage = false;// задаем false чтобы ф-я вызывалась только один раз
+    let fiveAliveMessage = false, oneAliveMessage = false;//задаем false чтобы ф-я вызывалась только один раз
 
     if (first) {//если мы ходим первые
         let anotherShot = true; //стреляем пока не промажем
@@ -735,7 +735,7 @@ async function startGame() {
             await pause(1000);
             anotherShotComp = computerShot(nick);//true, если попадание
             winner = battle.isWinner();
-            if (winner) return; // Проверка на победу
+            if (winner) return; //проверка на победу
         }
 
         let anotherShot = true;//стреляем пока не промажем
