@@ -23,6 +23,7 @@ const technicalCell: string = "technicalCell";
 const emptyCell: string = "emptyCell";
 const shipCell: string = "shipCell";
 const occupiedCell: string = "occupiedCell";
+const realOccupiedCell: string = "realOccupiedCell";
 const damagedCell: string = "damagedCell";
 const deadCell: string = "deadCell";
 const fieldRange: [number, number] = [1, 10];
@@ -216,6 +217,26 @@ class BattleField {
             cell.row > 0 && cell.row <= 10 && cell.col > 0 && cell.col <= 10
             );    
     }
+
+    horizontalSurroundings(row: number, col: number): Location[] {//горизонтальное окружение клетки с координатами row col
+        let surroundings = [
+            {row, col: col - 1},
+            {row, col: col + 1},
+        ];
+        return surroundings.filter(cell => 
+            cell.row > 0 && cell.row <= 10 && cell.col > 0 && cell.col <= 10
+            );    
+    }
+
+    verticalSurroundings(row: number, col: number): Location[] {//вертикальное окружение клетки с координатами row col
+        let surroundings = [
+            {row: row -1, col},
+            {row: row +1, col},
+        ];
+        return surroundings.filter(cell => 
+            cell.row > 0 && cell.row <= 10 && cell.col > 0 && cell.col <= 10
+            );    
+    }
 }
 
 class ShipManagement {
@@ -323,8 +344,6 @@ class ShipManagement {
     }
 
     inputShipPlacement(battleField: BattleField, row: number, col: number, size: number, orientation: string) : boolean {//расстановка кораблей вручную для игрока
-        let inputOrientation = orientation;
-        let randomCell = {row, col};
         let possibleCells = this.checkSpaceForTheShip(battleField.battleField, size, orientation);
         //сравниваем значения, потому что объект передается по ссылке и одинаковые значения в объектах еще не значат, что они равны
         let check = possibleCells.find(rowCol => rowCol.row === row && rowCol.col === col);
@@ -332,7 +351,7 @@ class ShipManagement {
             return false;
 
         } else {
-            this.addShip(battleField.battleField, randomCell.row, randomCell.col, size, inputOrientation, player);
+            this.addShip(battleField.battleField, row, col, size, orientation, player);
             console.log(`Корабль размещен на поле, теперь твоя карта выглядит вот так:\n`);
             console.log(battleField.displayBattleField(battleField));
             return true;
@@ -369,43 +388,85 @@ class Battle {
 
     computerFire() : boolean {
         let possibleMoves: Location[] = [];
+        let damagedCells: Location[] = [];
 
         //логика стрельбы компьютера (добивание поврежденных кораблей)
         for (let row = 1; row < this.playerBoard.battleField.length; row++) {
             for (let col = 1; col < this.playerBoard.battleField.length; col++) {
-                if (this.playerBoard.battleField[row][col].typeOfCell === damagedCell) {//если на поле есть поврежденные клетки, то пытаемся стрельнуть накрест по вертикали и горизонтали от них
-                    this.playerBoard.orthogonalSurroundings(row, col).forEach(cell => {
-                        if (this.playerBoard.battleField[cell.row][cell.col].value !== missShotBlock &&//проверяем на повторный выстрел в ту же клетку, либо
-                            this.playerBoard.battleField[cell.row][cell.col].value !== damagedBlock//уже поврежденный корабль, в случае нескольких палуб
-                        ) {possibleMoves.push(cell)};
-                    });
+                if (this.playerBoard.battleField[row][col].typeOfCell === damagedCell) {//собираем все поврежденные клетки
+                    damagedCells.push({row, col});
                 }
             }
-        } 
-        
-        if (possibleMoves.length === 0) {
-            possibleMoves = this.computerBoard.possibleMoves;//выбираем возможные ходы для компьютера в случае, если нет поврежденных клеток
         }
-        
-        let randomNum = Math.floor(Math.random() * possibleMoves.length);// floor выводит правильное распределение для первого значения
-        let randomRowCol = possibleMoves[randomNum];
+
+        if (damagedCells.length === 1) {
+            //если всего одна поврежденная клетка - мы незнаем в каком направлении расположен корабль и пытаемся стрелять накрест
+            possibleMoves = this.playerBoard.orthogonalSurroundings(damagedCells[0].row, damagedCells[0].col).filter(cell => 
+                this.playerBoard.battleField[cell.row][cell.col].value !== missShotBlock &&
+                this.playerBoard.battleField[cell.row][cell.col].typeOfCell !== occupiedCell);//отфильтровываем клетки, куда уже был произведен выстрел
+            }
+
+        if (damagedCells.length > 1) {
+            //когда у нас есть несколько поврежденных клеток, то мы уже знаем направление расположения корабля
+            //если мы попали по кораблю хотя бы один раз - мы не сможем стрелять по следующему пока не убьем его
+            //поэтому для проверки достаточно сравнить всего две первые поврежденные клетки, остальныебудут на том же ряду или столбце
+            if (damagedCells[0].row === damagedCells[1].row) {//в случае, если корабль располагается горизонтально
+                //если корабль расположен горизонтально
+                for (let i = 0; i < damagedCells.length; i++) {
+                    let row = damagedCells[i].row;
+                    let col = damagedCells[i].col;
+                    //для каждой клетки находим возможные ходы
+                    let movesForCell = this.playerBoard.horizontalSurroundings(row, col).filter(cell => //отфильтровываем клетки куда уже стреляли (промах и попадание)
+                        this.playerBoard.battleField[cell.row][cell.col].value !== missShotBlock &&
+                        this.playerBoard.battleField[cell.row][cell.col].value !== damagedBlock &&
+                        this.playerBoard.battleField[cell.row][cell.col].typeOfCell !== occupiedCell
+                    );
+                    //добавляем в possiblemoves
+                    for (let moves = 0; moves < movesForCell.length; moves++) {
+                        possibleMoves.push(movesForCell[moves]);
+                    }
+                }
+            } else {
+                //если корабль расположен вертикально
+                for (let i = 0; i < damagedCells.length; i++) {
+                    let row = damagedCells[i].row;
+                    let col = damagedCells[i].col;
+                    //для каждой клетки находим возможные ходы
+                    let movesForCell = this.playerBoard.verticalSurroundings(row, col).filter(cell => //отфильтровываем клетки куда уже стреляли (промах и попадание)
+                        this.playerBoard.battleField[cell.row][cell.col].value !== missShotBlock &&
+                        this.playerBoard.battleField[cell.row][cell.col].value !== damagedBlock &&
+                        this.playerBoard.battleField[cell.row][cell.col].typeOfCell !== occupiedCell
+                    );
+                    //добавляем в possiblemoves
+                    for (let moves = 0; moves < movesForCell.length; moves++) {
+                        possibleMoves.push(movesForCell[moves]);
+                    }
+                }
+            }
+        }
+
+        if (possibleMoves.length === 0) {//когда у нас нет поврежденных клеток, приходим сюда с 0 и выбираем случайную клетку из оставшихся ходов
+            possibleMoves = this.computerBoard.possibleMoves;
+        }
+            
+        let randomCroodinates = possibleMoves[Math.floor(Math.random() * possibleMoves.length)]; //floor выводит правильное распределение для первого значения, выбираем случайные кординаты
         
         //убираем координаты выстрела из возможных ходов в дальнейшем
-        this.computerBoard.possibleMoves = this.computerBoard.possibleMoves.filter(coordinates => !(coordinates.row === randomRowCol.row && coordinates.col === randomRowCol.col));
+        this.computerBoard.possibleMoves = this.computerBoard.possibleMoves.filter(coordinates => !(coordinates.row === randomCroodinates.row && coordinates.col === randomCroodinates.col));
         //проверяем надамажилась ли пустая клетка или корабль
-        let success = this.takesDamage(randomRowCol.row, randomRowCol.col, player);
+        let success = this.takesDamage(randomCroodinates.row, randomCroodinates.col, player);
 
         if (success) {//если попали
-            this.playerBoard.crossSurroundings(randomRowCol.row, randomRowCol.col).forEach(cell => {
+            this.playerBoard.crossSurroundings(randomCroodinates.row, randomCroodinates.col).forEach(cell => {
                 this.playerBoard.battleField[cell.row][cell.col].typeOfCell = occupiedCell;
                 });//убираем клетки накрест от места попадания из возможных ходов - там не может быть корабля
-            this.playerBoard.battleField[randomRowCol.row][randomRowCol.col].value = damagedBlock;//изменяем клетку на подбитую
-            this.playerBoard.battleField[randomRowCol.row][randomRowCol.col].typeOfCell = damagedCell;
+            this.playerBoard.battleField[randomCroodinates.row][randomCroodinates.col].value = damagedBlock;//изменяем клетку на подбитую
+            this.playerBoard.battleField[randomCroodinates.row][randomCroodinates.col].typeOfCell = damagedCell;
             //проверяем, мертв ли корабль
-            let dead = this.isDead(randomRowCol.row, randomRowCol.col, this.playerBoard);
+            let dead = this.isDead(randomCroodinates.row, randomCroodinates.col, this.playerBoard);
             if (dead) {
                 // если корабль мертв, блокируем клетки вокруг всего корабля
-                let ship = this.checkShip(randomRowCol.row, randomRowCol.col, this.playerBoard);
+                let ship = this.checkShip(randomCroodinates.row, randomCroodinates.col, this.playerBoard);
                 for (let cell of ship) {
                     this.playerBoard.battleField[cell.row][cell.col].value = deadShipBlock;//обновляем отображение
                     this.playerBoard.battleField[cell.row][cell.col].typeOfCell = deadCell;//обновляем содержание
@@ -415,15 +476,19 @@ class Battle {
                             surroundingCell.value !== deadShipBlock && 
                             surroundingCell.value !== missShotBlock) {//обновляем окружение корабля (для каждой клетки если это не сам корабль), промахи оставляем без изменения
                             surroundingCell.value = occupiedBlock;
-                            surroundingCell.typeOfCell = occupiedCell;
+                            surroundingCell.typeOfCell = realOccupiedCell;
                         }
                     });
                 }
             }
+            this.computerBoard.possibleMoves = this.computerBoard.possibleMoves.filter(coordinates => 
+                this.playerBoard.battleField[coordinates.row][coordinates.col].typeOfCell !== realOccupiedCell //исключаем клетки с типом realOccupiedCell
+            );
+
             return true;
         } else {
-            this.playerBoard.battleField[randomRowCol.row][randomRowCol.col].value = missShotBlock; // метим клетку как промах
-            this.playerBoard.battleField[randomRowCol.row][randomRowCol.col].typeOfCell = occupiedCell;
+            this.playerBoard.battleField[randomCroodinates.row][randomCroodinates.col].value = missShotBlock; // метим клетку как промах
+            this.playerBoard.battleField[randomCroodinates.row][randomCroodinates.col].typeOfCell = occupiedCell;
         }
         return false;
     }
@@ -628,12 +693,12 @@ function computerShot(nick: string) {
 
 async function fiveAlive() {
     await blinkingMessage(typingMessage, 8, 800);
-    console.log(`\nУ ТЕБЯ ВСЕ НОРМАЛЬНО???? МОЖЕТ ХВАТИТ ПО МНЕ СТРЕЛЯТЬ??!?`);
+    console.log(`\nУ ТЕБЯ ВСЕ НОРМАЛЬНО???? МХ ОФФ ЗАЕБАЛ!!!!!!`);
 }
 
 async function oneAlive() {
     await blinkingMessage(typingMessage, 8, 800);
-    console.log(`\nОЙ ВСЕ, Я СЕЛ НА ПОСЛЕДНИЙ КОРАБЛЬ И УПЛЫЛ, МОЖЕШЬ НЕ ИСКАТЬ`);
+    console.log(`\nZAEBAL VIRUBAI CHITI NORMALNO IGRAT MOJESH??????`);
 }
 
 async function startGame() {
@@ -643,60 +708,53 @@ async function startGame() {
     await pause(1000);
     let first = await firstMove(nick);    
     await blinkingMessage(gameStart, 4, 1000);
-    
-    while (!winner) {//пока не определится победитель игра продолжается(пустая строка не будет считаться)
-        if (first) {//если мы ходим первые
-            let anotherShot = true; //стреляем пока не промажем
-            while (anotherShot) {
-                let aliveShips = battle.checkAlive(computerBattleField);
-                anotherShot = await playerShot(nick);//true, если попадание
-                winner = battle.isWinner();
-                if (aliveShips === 5) {
-                    fiveAlive();
-                }
-            if (aliveShips === 1) {
-                    oneAlive();
-                }
-                if (winner) return;//проверка на победу
+
+    let fiveAliveMessage = false, oneAliveMessage = false;// задаем false чтобы ф-я вызывалась только один раз
+
+    if (first) {//если мы ходим первые
+        let anotherShot = true; //стреляем пока не промажем
+        while (anotherShot) {
+            let aliveShips = battle.checkAlive(computerBattleField);
+            anotherShot = await playerShot(nick);//true, если попадание
+            winner = battle.isWinner();
+            if (aliveShips === 5 && !fiveAliveMessage) {
+                await fiveAlive();
+                fiveAliveMessage = true;//удаляем повторный вызов
             }
-
-            await pause(1000);
-
-            let anotherShotComp = true;
-            while (anotherShotComp) {
-                anotherShotComp = computerShot(nick);//true, если попадание
-                winner = battle.isWinner();
-                if (winner) return; // Проверка на победу
+        if (aliveShips === 1 && !oneAliveMessage) {
+                await oneAlive();
+                oneAliveMessage = true;
             }
-
-            await pause(1000);
-
-        } else {//если компьютер ходит первый
-            let anotherShotComp = true;
-            while (anotherShotComp) {
-                anotherShotComp = computerShot(nick);//true, если попадание
-                winner = battle.isWinner();
-                if (winner) return;//пповерка на победу
-            }
-
-            await pause(1000);
-
-            let anotherShot = true;//стреляем пока не промажем
-            while (anotherShot) {
-                let aliveShips = battle.checkAlive(computerBattleField);
-                anotherShot = await playerShot(nick);//true, если попадание
-                winner = battle.isWinner();
-                if (aliveShips === 5) {
-                    fiveAlive();
-                }
-            if (aliveShips === 1) {
-                    oneAlive();
-                }
-                if (winner) return;//пповерка на победу
-            }
-
-        await pause(1000);
+            if (winner) return//проверка на победу
         }
+    } 
+
+    while (!winner) {//пока не определится победитель игра продолжается(пустая строка не будет считаться)
+        let anotherShotComp = true;
+        while (anotherShotComp) {
+            await pause(1000);
+            anotherShotComp = computerShot(nick);//true, если попадание
+            winner = battle.isWinner();
+            if (winner) return; // Проверка на победу
+        }
+
+        let anotherShot = true;//стреляем пока не промажем
+        while (anotherShot) {
+            await pause(1000);
+            let aliveShips = battle.checkAlive(computerBattleField);
+            anotherShot = await playerShot(nick);//true, если попадание
+            winner = battle.isWinner();
+
+            if (aliveShips === 5 && !fiveAliveMessage) {
+                await fiveAlive();
+                fiveAliveMessage = true;
+            }
+        if (aliveShips === 1 && !oneAliveMessage) {
+                await oneAlive();
+                oneAliveMessage = true;
+            }
+            if (winner) return;//пповерка на победу
+            }
     }
 }
 
