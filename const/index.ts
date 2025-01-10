@@ -1,0 +1,35 @@
+export * from './interfaces'
+
+export const mapSize: number = 10;
+export const playerBlock: string = "⬛";
+export const shipBlock: string = "🚢";
+export const fogOfWarBlock: string = "✼ ";
+export const occupiedBlock:string = " +";
+export const damagedBlock: string = "💥";
+export const deadShipBlock: string = "💀";
+export const missShotBlock: string = "❌";
+export const shipSizes = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+export const numberOfShips = shipSizes.length;
+export const horizontal: string = "horizontal";
+export const vertical: string = "vertical";
+export const player: boolean = true;
+export const computer: boolean = false;
+export const technicalCell: string = "technicalCell";
+export const emptyCell: string = "emptyCell";
+export const shipCell: string = "shipCell";
+export const occupiedCell: string = "occupiedCell";
+export const realOccupiedCell: string = "realOccupiedCell";
+export const damagedCell: string = "damagedCell";
+export const deadCell: string = "deadCell";
+export const fieldRange: [number, number] = [1, 10];
+export const chooseRange: [number, number] = [1, 2];
+export const space30 = " ".repeat(30); //расстояние между полями
+export const space68 = " ".repeat(68); //расстояние между полями
+export const yellow: string = "\u001b[33m";
+export const green: string = "\u001b[32m";
+export const red: string = "\u001b[31m";
+export const colEnd: string = "\u001b[0m";
+export const pirate: string = `${red}Капитан SKOLZKIY_STAS${colEnd}`
+export const coins: string[] = [`${yellow}⛀${colEnd}`, `${yellow}⛁${colEnd}`, `${yellow}⛃${colEnd}`, `${yellow}⛂${colEnd}`];
+export const gameStart: string[] = ["Игра начнется через 3...", "Игра начнется через 2...", "Игра начнется через 1...", `${yellow}ПОЕХАЛИ!${colEnd}\n`];
+export const typingMessage: string[] = [`${pirate} набирает сообщение . `, `${pirate} набирает сообщение . . `, `${pirate} набирает сообщение . . . `];
